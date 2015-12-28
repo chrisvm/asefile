@@ -42,7 +42,11 @@ function String(length, string) {
     this.bsize = 2 + this.length;
 };
 
-var classes = [Byte, Word, DWord, Long, Bytes, Rect, String], mod = {};
+function Pixel () {
+
+};
+
+var classes = [Byte, Word, DWord, Long, Bytes, Rect, String, Pixel], mod = {};
 
 _.each(classes, function (c) {
     c.constructor = c;
