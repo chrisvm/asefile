@@ -2,21 +2,19 @@
  * Created by chrisvm on 12/27/15.
  */
 var path = require('path'),
-    types = require('./byte_types');
+    types = require('./byte_types'),
+    _ = require('underscore');
 
-function TypeAddon() {
-    this.types = [];
+
+function ByteDef() {
+    this.defs = {};
+}
+ByteDef.constructor = ByteDef;
+
+ByteDef.prototype.definition = function (name, def) {
+    // iterate throught the keys of the def
+    this.defs[name] = _.mapObject(def, function (val, key) {
+        // get type
+        if (_.has(types, ))
+    });
 };
-TypeAddon.constructor = TypeAddon;
-
-TypeAddon.prototype.add = function (key, type) {
-    if (typeof(type) == 'string') {
-        if (types.keys().indexOf(type) != 0) {
-            type = types[type];
-        }
-    }
-    this.types.append(type);
-    return this;
-};
-
-function Re
