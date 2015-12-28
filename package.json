@@ -1,0 +1,7 @@
+{
+  "name": "asefile",
+  "version": "0.0.1",
+  "dependencies": {
+    "underscore": "^1.8.3"
+  }
+}
