@@ -26,6 +26,11 @@ ase_def.define('header', {
 (function test() {
     var path = require('path'),
         fPath = path.resolve(__filename, '../../../test/tank.ase');
+    
+    // log the test vars 
+    console.log(".ase File Path:", fPath);
+    
+    // read the file 
     ase_def.parse('header', fPath, function (err, parsed) {
         if (err) throw err;
         console.log("Parsed:", parsed);
