@@ -19,7 +19,7 @@ ByteDef.constructor = ByteDef;
  */
 ByteDef.prototype.define = function (name, def) {
     // iterate throught the keys of the def
-    this.defs[name] = _.mapObject(def, function (val, key) {
+    this.defs[name] = _.mapValues(def, function (val) {
         // if string get type
         if (typeof(val) == 'string') {
             val = types.get(val);
