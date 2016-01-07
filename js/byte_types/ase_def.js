@@ -48,20 +48,5 @@ ase_def.define('ase_file', {
 // TODO: test this new api
 ase_def.after('frame_chunk.chunk_data', types.Bytes, ['frame_chunk.chunk_size']);
 ase_def.repeat('ase_file.frame', 'ase_file.header.frames');
-
 module.exports = ase_def;
-
-(function test() {
-    var path = require('path'),
-        fPath = path.resolve(__filename, '../../../test/tank.ase');
-    
-    // log the test vars 
-    console.log(".ase File Path:".yellow, fPath);
-    
-    // read the file
-    ase_def.parse('header', fPath, function (err, parsed) {
-        if (err) throw err;
-        console.log("Parsed:", parsed);
-    });
-})();
 
