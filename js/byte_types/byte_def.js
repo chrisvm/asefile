@@ -10,6 +10,7 @@ var path = require('path'),
 
 function ByteDef() {
     this.defs = {};
+    this.mods = { after: {}, repeat: {} };
 }
 ByteDef.constructor = ByteDef;
 
@@ -35,7 +36,7 @@ ByteDef.prototype.define = function (name, def) {
 /**
  * Definition parses a file, calling the callback with the parsed object
  * @param {string} def - the name of the definition
- * @param {string} filePath - the path to the file to be parsed
+ * @param {string|ReadableStream} filePath - the path to the file to be parsed or the opened file
  * @param {function([err], parsed)} cb - the callback, recieves err and parsed
  **/
 ByteDef.prototype.parse = function (def, filePath, cb) {
@@ -44,10 +45,19 @@ ByteDef.prototype.parse = function (def, filePath, cb) {
     if ((def_obj = this.get_def(def)) == null)
         return cb(null, null);
     // wrap definition in sequential list
-    else definition = ByteDef.seq_wrapper(def_obj);
+    else definition = ByteDef.seq_wrapper(def_obj, def);
 
-    // create read stream
-    var ret = {}, stream = fs.createReadStream(filePath), parse_able = true;
+    // create read stream if string given
+    var ret = {}, parse_able = true, stream;
+    if (typeof(filePath) == 'string') {
+        stream = fs.createReadStream(filePath);
+    } else {
+        // else just remove all event listeners and start reading
+        filePath.removeAllListeners();
+        stream = filePath;
+    }
+
+    // attach on readable event
     stream.on('readable', _.bind(function () {
         // start parsing loop
         var chunk, part;
@@ -59,10 +69,44 @@ ByteDef.prototype.parse = function (def, filePath, cb) {
             if (part == null) {
                 // call callback with parsed results
                 parse_able = false;
+                stream.removeAllListeners();
                 return cb(null, ret);
             }
 
             // TODO: unit test for just-in-time parsing
+            // if null placeholder, look for after entry in the mods.after object
+            if (part.is == 'null') {
+                var part_name = [part.def_name, part.key].join('.');
+                if (_.has(this.mods.after, part_name))  {
+                    // TODO: do initing, checking all data necessary is already parsed
+                    // get mod
+                    var after_mod = this.mods.after[part_name];
+
+                    // prepare arguments
+                    var args = _.map(after_mod.args, function (v) { return _.get(ret, v); });
+
+                    // if any argument is null, error
+                    if (_.some(args, function (a) { return a == null; })) {
+                        // jit parsing failed, exit with error
+                        parse_able = false;
+                        return cb('MissingJITParsingModError', null);
+                    }
+
+                    // set part to correct type
+                    part = new (Function.prototype.bind.apply(after_mod.constructor, args));
+                } else {
+                    // raise error
+                    parse_able = false;
+                    cb('MissingJITParsingDataError', null);
+                }
+            }
+
+            // TODO: implement recursive definition
+            // if part is string, look in definitions
+            if (typeof(part) == 'string') {
+
+            }
+
             // get chunk for part
             chunk = stream.read(part.val.bsize);
             // if chunk size != part.bsize, data not enough for definition
@@ -110,7 +154,11 @@ ByteDef.prototype.get_def = function (def) {
  * @param {string[]|int[]} args - the list of arguments to give to constructor
  */
 ByteDef.prototype.after = function (def_name, constructor, args) {
-
+    this.mods.after[def_name] = {
+        "def_name": def_name,
+        "constructor": constructor,
+        "args": args
+    };
 };
 
 
@@ -118,10 +166,13 @@ ByteDef.prototype.after = function (def_name, constructor, args) {
 /**
  * Set a def part to repeat a set of times
  * @param {string} def_name - the definition (or sub definition) to repeat
- * @param {string|Number} part_name - times to repeat the definition
+ * @param {string|Number} repeat - times to repeat the definition
  */
-ByteDef.prototype.repeat = function (def_name, part_name) {
-
+ByteDef.prototype.repeat = function (def_name, repeat) {
+    this.mods.repeat[def_name] = {
+        "def_name": def_name,
+        "repeat": repeat
+    };
 };
 
 /**
