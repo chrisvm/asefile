@@ -49,4 +49,25 @@ describe("ByteDef", function () {
             test_def.get_def('test').should.deepEqual({a:1, b: {is: null}, c: 2});
         });
     });
+
+    describe('#parsing mods', function () {
+        it('should create after entry in the mods object', function () {
+            var test_def = new ByteDef();
+            test_def.after('test.b', Number, ['test.a']);
+            test_def.mods.after['test.b'].should.deepEqual({
+                "def_name": 'test.b',
+                "constructor": Number,
+                "args": ['test.a']
+            });
+        });
+
+        it('should create repeat entry in the mods object', function () {
+            var test_def = new ByteDef();
+            test_def.repeat('test.b', 'test.a');
+            test_def.mods.repeat['test.b'].should.deepEqual({
+                "def_name": 'test.b',
+                "repeat": 'test.a'
+            });
+        });
+    });
 });
