@@ -97,6 +97,28 @@ ByteDef.prototype.get_def = function (def) {
     }
 };
 
+// TODO: implement this method
+/**
+ * Set a def part to be init after starting parsing
+ * @param {string} def_name - name of the part to set
+ * @param {function} constructor - the constructor of the object to replace the part
+ * @param {string[]|int[]} args - the list of arguments to give to constructor
+ */
+ByteDef.prototype.after = function (def_name, constructor, args) {
+
+};
+
+
+// TODO: implement this method
+/**
+ * Set a def part to repeat a set of times
+ * @param {string} def_name - the definition (or sub definition) to repeat
+ * @param {string|Number} part_name - times to repeat the definition
+ */
+ByteDef.prototype.repeat = function (def_name, part_name) {
+
+};
+
 /**
  * Wrap the definition with an object with linked-list type functionality
  * @param {object} def_obj - definition object to wrap
