@@ -1,7 +1,7 @@
 /**
  * Created by chrisvm on 12/27/15.
  */
-var _ = require('underscore');
+var _ = require('lodash');
 
 function Byte () {
     this.signed = false
