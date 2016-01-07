@@ -13,16 +13,20 @@ function ByteDef() {
 ByteDef.constructor = ByteDef;
 
 /**
- * Create a definition from an object
+ * Create a definition from an object, sanitizing the object
  * @param {string} name - name of the definition to be created
  * @param {object} def - object with key-value pairs
  */
+// TODO: unit test for correct placeholder creation
 ByteDef.prototype.define = function (name, def) {
     // iterate throught the keys of the def
     this.defs[name] = _.mapValues(def, function (val) {
-        // if string get type
         if (typeof(val) == 'string') {
+            // if string, look for in types
             val = types.get(val);
+        } else if (val == null) {
+            // if null, set to null placeholder
+            val = {"is": null};
         }
         return val;
     }, this);
@@ -58,6 +62,7 @@ ByteDef.prototype.parse = function (def, filePath, cb) {
                 return cb(null, ret);
             }
 
+            // TODO: unit test for just-in-time parsing
             // get chunk for part
             chunk = stream.read(part.val.bsize);
             // if chunk size != part.bsize, data not enough for definition
@@ -97,7 +102,7 @@ ByteDef.prototype.get_def = function (def) {
     }
 };
 
-// TODO: implement this method
+// TODO: implement ByteDef.after method
 /**
  * Set a def part to be init after starting parsing
  * @param {string} def_name - name of the part to set
@@ -109,7 +114,7 @@ ByteDef.prototype.after = function (def_name, constructor, args) {
 };
 
 
-// TODO: implement this method
+// TODO: implement ByteDef.repeat method
 /**
  * Set a def part to repeat a set of times
  * @param {string} def_name - the definition (or sub definition) to repeat

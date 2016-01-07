@@ -45,7 +45,7 @@ ase_def.define('ase_file', {
     "frame": "frame"
 });
 
-// TODO: test this new api
+// TODO: implement/test new after/repeat api
 ase_def.after('frame_chunk.chunk_data', types.Bytes, ['frame_chunk.chunk_size']);
 ase_def.repeat('ase_file.frame', 'ase_file.header.frames');
 module.exports = ase_def;
