@@ -2,6 +2,7 @@
  * Created by chrisvm on 12/27/15.
  */
 var path = require('path'),
+    SequentialWrapper = require('./seq_wrapper'),
     types = require('./byte_types'),
     _ = require('lodash'),
     fs = require('fs');
@@ -128,52 +129,7 @@ ByteDef.prototype.repeat = function (def_name, part_name) {
  * @param {object} def_obj - definition object to wrap
  * @return {object} - the definition wrapped
  */
-ByteDef.seq_wrapper = function (def_obj) {
-    // create object with values of def_obj, with pointer to next value
-    var keys = _.keys(def_obj), ret = { "def": def_obj}, key, next, pointer = null;
-    for (var x = 0; x < keys.length; x += 1) {
-        key = keys[x], next = keys[x + 1];
-        ret[key] = { "val": _.clone(def_obj[key]), "next": next}
-    }
-
-    // bind has method
-    var has_method = function (has_key) { return _.has(this.def, has_key); };
-    ret.has = _.bind(has_method, ret);
-
-    // bind get method
-    var get_method = function (has_key) {
-        if (!this.has(has_key)) return null;
-        else {
-            return this.def[has_key];
-        }
-    };
-    ret.get = _.bind(get_method, ret);
-
-    // bind next method
-    var end = false;
-    var next_method = function () {
-        if (end) return null;
-        if (pointer == null) {
-            pointer = this[keys[0]];
-            if (pointer == null) {
-                end = true;
-                return null;
-            }
-            pointer = pointer.next;
-            return { "key": keys[0], "val": this[keys[0]].val };
-        } else {
-            var cache = { "key": pointer, "val": this[pointer].val };
-            pointer = this[pointer].next;
-            if (pointer == null) end = true;
-            return cache;
-        }
-    };
-    ret.next = _.bind(next_method, ret);
-
-    // bind end method
-    var end_method = function () { return end; };
-    ret.end = _.bind(end_method, ret);
-
-    return ret;
+ByteDef.seq_wrapper = function (def_obj, def_name) {
+    return new SequentialWrapper(def_obj, def_name);
 };
 module.exports = ByteDef;
