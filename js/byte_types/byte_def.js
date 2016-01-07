@@ -32,28 +32,44 @@ ByteDef.prototype.define = function (name, def) {
  * Definition parses a file, calling the callback with the parsed object
  * @param {string} def - the name of the definition
  * @param {string} filePath - the path to the file to be parsed
- * @param {function(err, parsed)} cb - the callback, recieves err and parsed
+ * @param {function([err], parsed)} cb - the callback, recieves err and parsed
  **/
 ByteDef.prototype.parse = function (def, filePath, cb) {
     // check for def
-    var definition;
-    if ((definition = this.get_def(def)) == null)
+    var def_obj, definition;
+    if ((def_obj = this.get_def(def)) == null)
         return cb(null, null);
-    else definition = this.test_wrapper(definition);
+    // wrap definition in sequential list
+    else definition = ByteDef.seq_wrapper(def_obj);
 
     // create read stream
-    var ret = {};
-    var stream = fs.createReadStream(filePath);
-    stream.on('readable', function () {
-        var chunk;
-        while (null !== (chunk = stream.read())) {
+    var ret = {}, stream = fs.createReadStream(filePath), parse_able = true;
+    stream.on('readable', _.bind(function () {
+        // start parsing loop
+        var chunk, part;
+        while (parse_able) {
+            // get next part to parse
+            part = definition.next();
 
+            // if null, finished parsing
+            if (part == null) {
+                // call callback with parsed results
+                parse_able = false;
+                return cb(null, ret);
+            }
+
+            // get chunk for part
+            chunk = stream.read(part.val.bsize);
+            // if chunk size != part.bsize, data not enough for definition
+            if (chunk.length < part.val.bsize) {
+                parse_able = false;
+                return cb('NotEnoughDataError', null);
+            }
+
+            // read part into ret object
+            ret[part.key] = def_obj[part.key].read(chunk);
         }
-    });
-
-    stream.on('end', function() {
-        cb(null, ret);
-    });
+    }, this));
 
     stream.on('error', function (err) {
         throw err;
@@ -77,21 +93,21 @@ ByteDef.prototype.has_def = function (def) {
 ByteDef.prototype.get_def = function (def) {
     if (!this.has_def(def)) return null;
     else {
-        return _.clone(this.defs[def], true);
+        return this.defs[def];
     }
 };
 
 /**
- * Wrap the definition with an object for parsing tracking
+ * Wrap the definition with an object with linked-list type functionality
  * @param {object} def_obj - definition object to wrap
  * @return {object} - the definition wrapped
  */
-ByteDef.def_wrapper = function (def_obj) {
+ByteDef.seq_wrapper = function (def_obj) {
     // create object with values of def_obj, with pointer to next value
     var keys = _.keys(def_obj), ret = { "def": def_obj}, key, next, pointer = null;
     for (var x = 0; x < keys.length; x += 1) {
         key = keys[x], next = keys[x + 1];
-        ret[key] = { "val": def_obj[key], "next": next}
+        ret[key] = { "val": _.clone(def_obj[key]), "next": next}
     }
 
     // bind has method
@@ -118,9 +134,9 @@ ByteDef.def_wrapper = function (def_obj) {
                 return null;
             }
             pointer = pointer.next;
-            return this[keys[0]].val;
+            return { "key": keys[0], "val": this[keys[0]].val };
         } else {
-            var cache = this[pointer].val;
+            var cache = { "key": pointer, "val": this[pointer].val };
             pointer = this[pointer].next;
             if (pointer == null) end = true;
             return cache;

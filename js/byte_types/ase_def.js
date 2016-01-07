@@ -2,7 +2,8 @@
  * Created by chrisvm on 12/30/15.
  */
 var ByteDef = require('./byte_def'),
-    types = require('./byte_types');
+    types = require('./byte_types'),
+    colors = require('colors');
 
 // define ase file
 var ase_def = new ByteDef();
@@ -22,13 +23,14 @@ ase_def.define('header', {
     "num_colors": new types.Word(),
     "future": new types.Bytes(93)
 });
+module.exports = ase_def;
 
 (function test() {
     var path = require('path'),
         fPath = path.resolve(__filename, '../../../test/tank.ase');
     
     // log the test vars 
-    console.log(".ase File Path:", fPath);
+    console.log(".ase File Path:".yellow, fPath);
     
     // read the file 
     ase_def.parse('header', fPath, function (err, parsed) {

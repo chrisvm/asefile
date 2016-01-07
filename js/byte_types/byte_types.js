@@ -4,10 +4,10 @@
 var _ = require('lodash');
 
 function Byte () {
-    this.signed = false
+    this.signed = false;
     this.read_method = 'readUInt8';
     this.bsize = 1;
-};
+}
 Byte.prototype.read = function (buff) {
     return buff[this.read_method]();
 };
@@ -16,7 +16,7 @@ function Word () {
     this.signed = false;
     this.read_method = 'readUInt16LE';
     this.bsize = 2;
-};
+}
 Word.prototype.read = function (buff) {
     return buff[this.read_method]();
 };
@@ -25,7 +25,7 @@ function DWord() {
     this.signed = false;
     this.read_method = 'readUInt32LE';
     this.bsize = 4;
-};
+}
 DWord.prototype.read = function (buff) {
     return buff[this.read_method]();
 };
@@ -34,7 +34,7 @@ function Long() {
     this.signed = true;
     this.read_method = 'readInt32LE';
     this.bsize = 4;
-};
+}
 Long.prototype.read = function (buff) {
     return buff[this.read_method]();
 };
