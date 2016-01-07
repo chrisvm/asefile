@@ -1,8 +1,9 @@
 var path = require('path'), jsDir = path.resolve(__dirname, '../js');
 var should = require('should'), ByteDef = require(path.join(jsDir, 'byte_types/byte_def'));
+var ase_def = require(path.join(jsDir, 'byte_types/ase_def'));
 
 describe("ByteDef", function () {
-    describe("#def_wrapper", function () {
+    describe("#seq_wrapper", function () {
 
         it('should work propertly for empty objects', function () {
             var testObj = {}, wrapped = ByteDef.seq_wrapper(testObj);
@@ -24,6 +25,19 @@ describe("ByteDef", function () {
             }
             vals.length.should.equal(3);
             should.deepEqual([1, 2, 3], vals);
+        });
+    });
+
+    describe('#has_def/get_def methods', function () {
+        var test_def = new ByteDef(), def = {a:1, b: 2};
+        test_def.define('test', def);
+
+        it('should check correctly for containement', function () {
+            test_def.has_def('test').should.equal(true);
+        });
+
+        it('should get properly the definition', function () {
+            test_def.get_def('test').should.deepEqual(def);
         });
     });
 });
