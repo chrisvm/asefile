@@ -17,7 +17,6 @@ ByteDef.constructor = ByteDef;
  * @param {string} name - name of the definition to be created
  * @param {object} def - object with key-value pairs
  */
-// TODO: unit test for correct placeholder creation
 ByteDef.prototype.define = function (name, def) {
     // iterate throught the keys of the def
     this.defs[name] = _.mapValues(def, function (val) {

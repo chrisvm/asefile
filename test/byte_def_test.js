@@ -40,4 +40,13 @@ describe("ByteDef", function () {
             test_def.get_def('test').should.deepEqual(def);
         });
     });
+
+    describe('#define method', function () {
+
+        it('should swap null values with placeholder', function () {
+            var test_def = new ByteDef(), def = {a:1, b: null, c: 2};
+            test_def.define('test', def);
+            test_def.get_def('test').should.deepEqual({a:1, b: {is: null}, c: 2});
+        });
+    });
 });
