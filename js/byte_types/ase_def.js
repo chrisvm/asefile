@@ -21,6 +21,11 @@ ase_def.define('header', {
     "future": new types.Bytes(93)
 });
 
+ase_def.define('frame', {
+    "header": "frame_header",
+    "chunk": "frame_chunk"
+});
+
 ase_def.define('frame_header', {
     "frame_bytes": new types.DWord(),
     "magic_num": new types.Word(),
@@ -35,18 +40,13 @@ ase_def.define('frame_chunk', {
     "chunk_data": null
 });
 
-ase_def.define('frame', {
-    "header": "frame_header",
-    "chunk": "frame_chunk"
-});
-
 ase_def.define('ase_file', {
     "header": "header",
-    "frame": "frame"
+    "frames": "frame"
 });
 
 // TODO: implement/test new after/repeat api
 ase_def.after('frame_chunk.chunk_data', types.Bytes, ['frame_chunk.chunk_size']);
-ase_def.repeat('ase_file.frame', 'ase_file.header.frames');
+ase_def.repeat('ase_file.frames', 'ase_file.header.frames');
 module.exports = ase_def;
 
