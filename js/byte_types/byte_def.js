@@ -121,22 +121,37 @@ ByteDef.prototype._recv_parse = function (def_name, orig, stream, obj) {
             }
         }
 
-        // TODO: implement recursive definition
+        // TODO: unit test this new recursive implementation
         // if part is string, look in definitions
         if (typeof(part) == 'string') {
-            
-        }
+            // if not found, give error
+            if (!this.has_def(path.key)) {
+                definition.valid = false;
+                return 'DefinitionNotFoundError';
+            }
 
-        // get chunk for part
-        chunk = stream.read(part.val.bsize);
-        // if chunk size != part.bsize, data not enough for definition
-        if (chunk.length < part.val.bsize) {
-            definition.valid = false;
-            return 'NotEnoughDataError';
-        }
+            var t_orig = this.get_def(part.key), t_obj = {}, t_err;
+            t_err = this._recv_parse(part.key, t_orig, stream, t_obj);
+            // error was found
+            if (t_err != null) {
+                definition.valid = false;
+                return t_err;
+            } else {
+                t[part.key] = t_obj;
+            }
+        } else {
+            // get chunk for part
+            chunk = stream.read(part.val.bsize);
+            // if chunk size != part.bsize, data not enough for definition
+            if (chunk.length < part.val.bsize) {
+                definition.valid = false;
+                return 'NotEnoughDataError';
+            }
 
-        // read part into ret object
-        t[part.key] = orig[part.key].read(chunk);
+            // read part into ret object
+            t[part.key] = orig[part.key].read(chunk);
+
+        }
     }
 };
 
