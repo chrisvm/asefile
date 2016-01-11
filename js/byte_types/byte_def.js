@@ -33,6 +33,7 @@ ByteDef.prototype.define = function (name, def) {
     }, this);
 };
 
+// TODO: finish recursive implementation
 /**
  * Definition parses a file, calling the callback with the parsed object
  * @param {string} def - the name of the definition
@@ -48,81 +49,93 @@ ByteDef.prototype.parse = function (def, filePath, cb) {
     else definition = ByteDef.seq_wrapper(def_obj, def);
 
     // create read stream if string given
-    var ret = {}, parse_able = true, stream;
+    var temp = {}, stream;
     if (typeof(filePath) == 'string') {
         stream = fs.createReadStream(filePath);
     } else {
-        // else just remove all event listeners and start reading
-        filePath.removeAllListeners();
+        // else start reading
         stream = filePath;
     }
 
     // attach on readable event
-    stream.on('readable', _.bind(function () {
-        // start parsing loop
-        var chunk, part;
-        while (parse_able) {
-            // get next part to parse
-            part = definition.next();
-
-            // if null, finished parsing
-            if (part == null) {
-                // call callback with parsed results
-                parse_able = false;
-                stream.removeAllListeners();
-                return cb(null, ret);
-            }
-
-            // TODO: unit test for just-in-time parsing
-            // if null placeholder, look for after entry in the mods.after object
-            if (part.is == 'null') {
-                var part_name = [part.def_name, part.key].join('.');
-                if (_.has(this.mods.after, part_name))  {
-                    // TODO: do initing, checking all data necessary is already parsed
-                    // get mod
-                    var after_mod = this.mods.after[part_name];
-
-                    // prepare arguments
-                    var args = _.map(after_mod.args, function (v) { return _.get(ret, v); });
-
-                    // if any argument is null, error
-                    if (_.some(args, function (a) { return a == null; })) {
-                        // jit parsing failed, exit with error
-                        parse_able = false;
-                        return cb('MissingJITParsingModError', null);
-                    }
-
-                    // set part to correct type
-                    part = new (Function.prototype.bind.apply(after_mod.constructor, args));
-                } else {
-                    // raise error
-                    parse_able = false;
-                    cb('MissingJITParsingDataError', null);
-                }
-            }
-
-            // TODO: implement recursive definition
-            // if part is string, look in definitions
-            if (typeof(part) == 'string') {
-
-            }
-
-            // get chunk for part
-            chunk = stream.read(part.val.bsize);
-            // if chunk size != part.bsize, data not enough for definition
-            if (chunk.length < part.val.bsize) {
-                parse_able = false;
-                return cb('NotEnoughDataError', null);
-            }
-
-            // read part into ret object
-            ret[part.key] = def_obj[part.key].read(chunk);
+    stream.once('readable', _.bind(function () {
+        var err = this._recv_parse(def, def_obj, definition, stream, temp), ret;
+        if (err == null) {
+            ret = {};
+            ret[def] = temp;
+        } else {
+            ret = null;
         }
+        cb(err, ret);
     }, this));
 
     stream.on('error', function (err) {
         throw err;
     });
+};
+
+// TODO: change parse_able use to definition.valid
+ByteDef.prototype._recv_parse = function (def_name, orig, definition, stream, obj) {
+    // start parsing loop
+    var chunk, part, t = {};
+    definition.valid = true;
+    while (definition.valid) {
+        // get next part to parse
+        part = definition.next();
+
+        // if null, finished parsing
+        if (part == null) {
+            // call callback with parsed results
+            definition.valid = false;
+            obj[def_name] = t;
+            return null;
+        }
+
+        // TODO: unit test for just-in-time parsing
+        // if null placeholder, look for after entry in the mods.after object
+        if (part.is == 'null') {
+            var part_name = [part.def_name, part.key].join('.');
+            if (_.has(this.mods.after, part_name))  {
+                // TODO: do initing, checking all data necessary is already parsed
+                // get mod
+                var after_mod = this.mods.after[part_name];
+
+                // prepare arguments
+                var args = _.map(after_mod.args, function (v) { return _.get(obj, v); });
+
+                // if any argument is null, error
+                if (_.some(args, function (a) { return a == null; })) {
+                    // jit parsing failed, exit with error
+                    definition.valid = false;
+                    return 'MissingJITParsingModError';
+                }
+
+                // set part to correct type
+                part = new (Function.prototype.bind.apply(after_mod.constructor, args));
+            } else {
+                // raise error
+                definition.valid = false;
+                return 'MissingJITParsingDataError';
+            }
+        }
+
+        // TODO: implement recursive definition
+        // if part is string, look in definitions
+        if (typeof(part) == 'string') {
+
+        }
+
+        // get chunk for part
+        chunk = stream.read(part.val.bsize);
+        // if chunk size != part.bsize, data not enough for definition
+        if (chunk.length < part.val.bsize) {
+            definition.valid = false;
+            return 'NotEnoughDataError';
+        }
+
+        // read part into ret object
+        t[part.key] = orig[part.key].read(chunk);
+    }
 };
 
 /**
