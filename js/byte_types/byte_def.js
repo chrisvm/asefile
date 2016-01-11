@@ -33,7 +33,6 @@ ByteDef.prototype.define = function (name, def) {
     }, this);
 };
 
-// TODO: finish recursive implementation
 /**
  * Definition parses a file, calling the callback with the parsed object
  * @param {string} def - the name of the definition
@@ -45,8 +44,6 @@ ByteDef.prototype.parse = function (def, filePath, cb) {
     var def_obj, definition;
     if ((def_obj = this.get_def(def)) == null)
         return cb(null, null);
-    // wrap definition in sequential list
-    else definition = ByteDef.seq_wrapper(def_obj, def);
 
     // create read stream if string given
     var temp = {}, stream;
@@ -59,7 +56,7 @@ ByteDef.prototype.parse = function (def, filePath, cb) {
 
     // attach on readable event
     stream.once('readable', _.bind(function () {
-        var err = this._recv_parse(def, def_obj, definition, stream, temp), ret;
+        var err = this._recv_parse(def, def_obj, stream, temp), ret;
         if (err == null) {
             ret = {};
             ret[def] = temp;
@@ -75,10 +72,15 @@ ByteDef.prototype.parse = function (def, filePath, cb) {
 };
 
 // TODO: change parse_able use to definition.valid
-ByteDef.prototype._recv_parse = function (def_name, orig, definition, stream, obj) {
+ByteDef.prototype._recv_parse = function (def_name, orig, stream, obj) {
     // start parsing loop
-    var chunk, part, t = {};
+    var chunk, part, t = {}, definition;
+
+    // wrap definition in sequential list
+    definition = ByteDef.seq_wrapper(orig, def_name);
     definition.valid = true;
+
+    // start parsing loop
     while (definition.valid) {
         // get next part to parse
         part = definition.next();
@@ -122,7 +124,7 @@ ByteDef.prototype._recv_parse = function (def_name, orig, definition, stream, ob
         // TODO: implement recursive definition
         // if part is string, look in definitions
         if (typeof(part) == 'string') {
-
+            
         }
 
         // get chunk for part
