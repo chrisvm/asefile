@@ -28,6 +28,31 @@ describe("ase_def.js", function () {
                 done();
             });
         });
+
+        it('should correctly parse a self referencing structure', function (done) {
+            var test_def = new ByteDef(), test_file = path.resolve(__dirname, 'testing.dat');
+            test_def.define('a', {
+                '1': new types.Byte(),
+                '2': new types.Byte()
+            });
+
+            test_def.define('b', {
+                '3': new types.Byte(),
+                '4': new types.Byte()
+            });
+
+            test_def.define('test', {
+                'a': 'a',
+                'b': 'b'
+            });
+
+            var testObj = {
+                'a': { '1': 0, '2': 1 },
+                'b': { '3': 2, '4': 3 }
+            };
+            test_def.parse('test', test_file, function (err, parsed) {
+                if (err) throw err;
+                parsed.should.deepEqual(testObj);
                 done();
             });
         });
