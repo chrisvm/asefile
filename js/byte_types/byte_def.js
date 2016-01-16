@@ -67,7 +67,6 @@ ByteDef.prototype.parse = function (def, filePath, cb) {
     });
 };
 
-// TODO: change parse_able use to definition.valid
 ByteDef.prototype._recv_parse = function (def_name, orig, stream, obj) {
     // start parsing loop
     var chunk, part, t = {}, definition;
@@ -117,7 +116,6 @@ ByteDef.prototype._recv_parse = function (def_name, orig, stream, obj) {
             }
         }
 
-        // TODO: unit test this new recursive implementation
         // if part is string, look in definitions
         if (typeof(part.val) == 'string') {
             // if not found, give error
@@ -171,7 +169,6 @@ ByteDef.prototype.get_def = function (def) {
     }
 };
 
-// TODO: implement ByteDef.after method
 /**
  * Set a def part to be init after starting parsing
  * @param {string} def_name - name of the part to set
@@ -187,7 +184,6 @@ ByteDef.prototype.after = function (def_name, constructor, args) {
 };
 
 
-// TODO: implement ByteDef.repeat method
 /**
  * Set a def part to repeat a set of times
  * @param {string} def_name - the definition (or sub definition) to repeat
