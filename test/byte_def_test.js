@@ -26,6 +26,18 @@ describe("ByteDef", function () {
             vals.length.should.equal(3);
             should.deepEqual([1, 2, 3], vals);
         });
+
+         it('should work correctly for string in values', function () {
+             var testObj = { "a": 'a', "b": 'b' },
+                 wrapped = ByteDef.seq_wrapper(testObj),
+                 prop, vals = [];
+             while ((prop = wrapped.next()) != null) {
+                 // do something
+                 vals.push(prop.val);
+             }
+             vals.length.should.equal(2);
+             should.deepEqual(['a', 'b'], vals);
+         });
     });
 
     describe('#has_def/get_def methods', function () {
