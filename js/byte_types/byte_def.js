@@ -22,10 +22,7 @@ ByteDef.constructor = ByteDef;
 ByteDef.prototype.define = function (name, def) {
     // iterate throught the keys of the def
     this.defs[name] = _.mapValues(def, function (val) {
-        if (typeof(val) == 'string') {
-            // if string, look for in types
-            val = types.get(val);
-        } else if (val == null) {
+        if (val == null) {
             // if null, set to null placeholder
             val = {"is": null};
         }
@@ -58,8 +55,7 @@ ByteDef.prototype.parse = function (def, filePath, cb) {
     stream.once('readable', _.bind(function () {
         var err = this._recv_parse(def, def_obj, stream, temp), ret;
         if (err == null) {
-            ret = {};
-            ret[def] = temp;
+            ret = temp[def];
         } else {
             ret = null;
         }
@@ -123,21 +119,21 @@ ByteDef.prototype._recv_parse = function (def_name, orig, stream, obj) {
 
         // TODO: unit test this new recursive implementation
         // if part is string, look in definitions
-        if (typeof(part) == 'string') {
+        if (typeof(part.val) == 'string') {
             // if not found, give error
-            if (!this.has_def(path.key)) {
+            if (!this.has_def(part.val)) {
                 definition.valid = false;
                 return 'DefinitionNotFoundError';
             }
 
-            var t_orig = this.get_def(part.key), t_obj = {}, t_err;
-            t_err = this._recv_parse(part.key, t_orig, stream, t_obj);
+            var t_orig = this.get_def(part.val), t_obj = {}, t_err;
+            t_err = this._recv_parse(part.val, t_orig, stream, t_obj);
             // error was found
             if (t_err != null) {
                 definition.valid = false;
                 return t_err;
             } else {
-                t[part.key] = t_obj;
+                t[part.key] = t_obj[part.key];
             }
         } else {
             // get chunk for part
@@ -150,7 +146,6 @@ ByteDef.prototype._recv_parse = function (def_name, orig, stream, obj) {
 
             // read part into ret object
             t[part.key] = orig[part.key].read(chunk);
-
         }
     }
 };
