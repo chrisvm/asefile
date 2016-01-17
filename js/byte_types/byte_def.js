@@ -46,6 +46,7 @@ ByteDef.prototype.parse = function (def, filePath, cb) {
     var temp = {}, stream;
     if (typeof(filePath) == 'string') {
         stream = fs.createReadStream(filePath);
+        stream.on('error', function (err) { throw err; });
     } else {
         // else start reading
         stream = filePath;
@@ -61,10 +62,6 @@ ByteDef.prototype.parse = function (def, filePath, cb) {
         }
         cb(err, ret);
     }, this));
-
-    stream.on('error', function (err) {
-        throw err;
-    });
 };
 
 ByteDef.prototype._recv_parse = function (def_name, orig, stream, obj) {
@@ -126,14 +123,37 @@ ByteDef.prototype._recv_parse = function (def_name, orig, stream, obj) {
             }
 
             // get referenced definition
-            var t_orig = this.get_def(currentPart.val), t_obj = {}, t_err;
+            var t_orig = this.get_def(currentPart.val), t_obj, t_err;
 
             // check if repeat mod present for current self-referenced property
             if (rmod && rmod[currentPart.key]) {
                 // TODO: insert repeat code for a self reference in here
+                // set array
+                var arr = t[currentPart.key] = [];
 
+                // get repeat number
+                var repTimes = rmod[currentPart.key];
+                if (typeof(repTimes) == 'string') {
+                    // repTimes is name of prop, get it
+                    repTimes = t[repTimes];
+                    if (repTimes == null) throw 'RepeatPropNotFoundError';
+                }
+
+                for (var index = 0; index < repTimes; index += 1) {
+                    // get parsed
+                    t_obj = {};
+                    t_err = this._recv_parse(currentPart.val, t_orig, stream, t_obj);
+                    // error was found
+                    if (t_err != null) {
+                        definition.valid = false;
+                        return t_err;
+                    } else {
+                        arr.push(t_obj[currentPart.key]);
+                    }
+                }
             } else {
                 // parse normally (without repeat)
+                t_obj = {};
                 t_err = this._recv_parse(currentPart.val, t_orig, stream, t_obj);
                 // error was found
                 if (t_err != null) {
