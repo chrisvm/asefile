@@ -137,6 +137,34 @@ describe("ByteDef", function () {
                     done();
                 });
             });
+
+            it('should parse repeat mods with self referencing', function (done) {
+                var test_def = new ByteDef();
+                test_def.define('test', {
+                    "size": new types.Byte(),
+                    "data": 'data'
+                });
+
+                test_def.define('data', {
+                    "a": new types.Byte(),
+                    "b": new types.Byte()
+                });
+
+                test_def.repeat('test.data', 'test.size');
+                var test_obj = {
+                    "size": 3,
+                    "data": [
+                        { "a": 0, "b": 1 },
+                        { "a": 2, "b": 3 },
+                        { "a": 4, "b": 5 }
+                    ]
+                }, test_file = path.resolve(__dirname, 'testing3.dat');
+                test_def.parse('test', test_file, function (err, parsed) {
+                    if (err) throw err;
+                    parsed.should.deepEqual(test_obj);
+                    done();
+                });
+            });
         });
 
         it('should parse correctly a header', function (done) {
