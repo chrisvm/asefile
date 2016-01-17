@@ -1,5 +1,7 @@
 var path = require('path'), jsDir = path.resolve(__dirname, '../js');
-var should = require('should'), ByteDef = require(path.join(jsDir, 'byte_types/byte_def'));
+var should = require('should');
+var ByteDef = require(path.join(jsDir, 'byte_types/byte_def')),
+    types = require(path.join(jsDir, 'byte_types/byte_types'));
 var ase_def = require(path.join(jsDir, 'byte_types/ase_def'));
 
 describe("ByteDef", function () {
@@ -62,23 +64,128 @@ describe("ByteDef", function () {
         });
     });
 
-    describe('#parsing mods', function () {
-        it('should create after entry in the mods object', function () {
-            var test_def = new ByteDef();
-            test_def.after('test.b', Number, ['test.a']);
-            test_def.mods.after['test.b'].should.deepEqual({
-                "def_name": 'test.b',
-                "constructor": Number,
-                "args": ['test.a']
+    describe("#parsing", function () {
+
+        describe('#parsing mods', function () {
+
+            it('should create after entry in the mods object', function () {
+                var test_def = new ByteDef();
+                test_def.after('test.b', Number, ['test.a']);
+                test_def.mods.after['test.b'].should.deepEqual({
+                    "def_name": 'test.b',
+                    "constructor": Number,
+                    "args": ['test.a']
+                });
+            });
+
+            it('should create repeat entry in the mods object', function () {
+                var test_def = new ByteDef();
+                test_def.define('test', {
+                    'a': new types.Byte(),
+                    'b': new types.Byte()
+                });
+                test_def.repeat('test.b', 'test.a');
+                test_def.mods.repeat['test'].should.deepEqual({
+                    "b": "a"
+                });
+            });
+
+            it('should create various repeat entry in the mods object', function () {
+                var test_def = new ByteDef();
+                test_def.define('test', {
+                    'a': new types.Byte(),
+                    'b': new types.Byte()
+                });
+                test_def.repeat('test.b', 'test.a');
+                test_def.mods.repeat['test'].should.deepEqual({
+                    "b": "a"
+                });
+
+                test_def.repeat('test.d', 'test.c');
+                test_def.mods.repeat['test'].should.deepEqual({
+                    "b": "a",
+                    "d": "c"
+                });
+            });
+
+            it('should create repeat entry in the mods object given a integer', function () {
+                var test_def = new ByteDef();
+                test_def.define('test', {
+                    'a': new types.Byte(),
+                    'b': new types.Byte()
+                });
+                test_def.repeat('test.b', 5);
+                test_def.mods.repeat['test'].should.deepEqual({
+                    "b": 5
+                });
+            });
+
+            it('should parse repeat mods', function (done) {
+                var test_def = new ByteDef();
+                test_def.define('test', {
+                    "size": new types.Byte(),
+                    "data": new types.Byte()
+                });
+                test_def.repeat('test.data', 'test.size');
+                var test_obj = {
+                    "size": 3,
+                    "data": [1, 2, 3]
+                }, test_file = path.resolve(__dirname, 'testing2.dat');
+                test_def.parse('test', test_file, function (err, parsed) {
+                    if (err) throw err;
+                    parsed.should.deepEqual(test_obj);
+                });
             });
         });
 
-        it('should create repeat entry in the mods object', function () {
-            var test_def = new ByteDef();
-            test_def.repeat('test.b', 'test.a');
-            test_def.mods.repeat['test.b'].should.deepEqual({
-                "def_name": 'test.b',
-                "repeat": 'test.a'
+        it('should parse correctly a header', function (done) {
+            var testFile = path.resolve(__dirname, 'tank.ase');
+            var testObj = {
+                file_size: 1678,
+                magic_num: 42464,
+                frames: 1,
+                width: 100,
+                height: 100,
+                color_depth: 8,
+                flags: 0,
+                speed: 100,
+                blank1: 0,
+                blank2: 0,
+                pallete_alpha_index: 0,
+                num_colors: 256
+            };
+            ase_def.parse('header', testFile, function (err, parsed) {
+                if (err) throw err;
+                parsed.should.have.properties(testObj);
+                done();
+            });
+        });
+
+        it('should correctly parse a self referencing structure', function (done) {
+            var test_def = new ByteDef(), test_file = path.resolve(__dirname, 'testing.dat');
+            test_def.define('a', {
+                '1': new types.Byte(),
+                '2': new types.Byte()
+            });
+
+            test_def.define('b', {
+                '3': new types.Byte(),
+                '4': new types.Byte()
+            });
+
+            test_def.define('test', {
+                'a': 'a',
+                'b': 'b'
+            });
+
+            var testObj = {
+                'a': { '1': 0, '2': 1 },
+                'b': { '3': 2, '4': 3 }
+            };
+            test_def.parse('test', test_file, function (err, parsed) {
+                if (err) throw err;
+                parsed.should.deepEqual(testObj);
+                done();
             });
         });
     });
