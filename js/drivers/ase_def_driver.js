@@ -11,22 +11,14 @@ console.log('Test file path:'.yellow, filePath);
 var stream = fs.createReadStream(filePath);
 
 // parse file header
-var ase_file = {};
+var ase_file;
 var print_file = function () { console.log(ase_file); };
-ase_def.parse('header', stream, function (err, parsed) {
+ase_def.parse('ase_file', stream, function (err, parsed) {
     if (err) {
         console.log('Error:'.red);
         throw err;
     }
-    ase_file.header = parsed;
-
-    ase_def.parse('frame_header', stream, function (err, parsed) {
-        if (err) {
-            console.log('Error:'.red);
-            throw err;
-        }
-        ase_file.frame_header = parsed;
-        print_file();
-    });
+    ase_file = parsed;
+    print_file();
 });
 

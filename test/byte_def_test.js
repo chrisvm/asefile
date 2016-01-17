@@ -185,7 +185,6 @@ describe("ByteDef", function () {
                     test_def.parse('test', test_file, function (err, parsed) {
                         if (err) throw err;
                         parsed.data.length.should.equal(parsed.size);
-                        console.log(parsed);
                         done();
                     });
                 });

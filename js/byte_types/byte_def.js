@@ -66,7 +66,7 @@ ByteDef.prototype.parse = function (def, filePath, cb) {
 
 ByteDef.prototype._recv_parse = function (def_name, orig, stream, obj) {
     // start parsing loop
-    var chunk, currentPart, t = {}, definition, jit = false;
+    var chunk, currentPart, t = {}, definition, jit;
 
     // wrap definition in sequential list
     definition = ByteDef.seq_wrapper(orig, def_name);
@@ -74,6 +74,7 @@ ByteDef.prototype._recv_parse = function (def_name, orig, stream, obj) {
 
     // start parsing loop
     while (definition.valid) {
+        jit = false;
         // get next currentPart to parse
         currentPart = definition.next();
 
@@ -85,15 +86,16 @@ ByteDef.prototype._recv_parse = function (def_name, orig, stream, obj) {
             return null;
         }
 
-        // TODO: unit test for just-in-time parsing
         // if null placeholder, look for after entry in the mods.after object
         if (currentPart.val.is == 'null') {
             var amod = this.mods.after[def_name];
             if (amod && amod[currentPart.key])  {
                 amod = amod[currentPart.key];
                 // prepare arguments
-                var args = _.map(amod.args, function (v) { return _.get(this, v); }, t);
-
+                var args = _.map(amod.args, function (v) {
+                    var ret = _.get(t, v);
+                    return ret;
+                });
                 // if any argument is null, error
                 if (_.some(args, function (a) { return a == null; })) {
                     // jit parsing failed, exit with error
@@ -102,26 +104,26 @@ ByteDef.prototype._recv_parse = function (def_name, orig, stream, obj) {
                 }
 
                 // set currentPart to correct type
-                currentPart.val = new (Function.prototype.bind.apply(amod.type, args));
+                currentPart.val = new (Function.prototype.bind.apply(amod.type, [amod.type].concat(args)));
                 jit = true;
             } else {
                 // raise error
                 definition.valid = false;
-                return 'MissingJITParsingDataError';
+                return 'MissingJITEntryError';
             }
         }
 
         // if currentPart is string, look in definitions
         var rmod = this.mods.repeat[def_name];
         if (typeof(currentPart.val) == 'string') {
+            // get referenced definition
+            var t_orig = this.get_def(currentPart.val), t_obj, t_err;
+
             // if not found, give error
-            if (!this.has_def(currentPart.val)) {
+            if (t_orig == null) {
                 definition.valid = false;
                 return 'DefinitionNotFoundError';
             }
-
-            // get referenced definition
-            var t_orig = this.get_def(currentPart.val), t_obj, t_err;
 
             // check if repeat mod present for current self-referenced property
             if (rmod && rmod[currentPart.key]) {
@@ -132,7 +134,7 @@ ByteDef.prototype._recv_parse = function (def_name, orig, stream, obj) {
                 var repTimes = rmod[currentPart.key];
                 if (typeof(repTimes) == 'string') {
                     // repTimes is name of prop, get it
-                    repTimes = t[repTimes];
+                    repTimes = _.get(t, repTimes);
                     if (repTimes == null) throw 'RepeatPropNotFoundError';
                 }
 

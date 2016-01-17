@@ -39,12 +39,14 @@ SequentialWrapper.prototype.next = function () {
         return null;
 
     if (this._pointer == null) {
-        this._pointer = this[this._keys[0]];
-        if (this._pointer == null) {
+        if (this._keys.length == 0) {
             this._end = true;
             return null;
         }
-        this._pointer = this._pointer.next;
+        this._pointer = this[this._keys[0]].next;
+        if (this._pointer == null)
+            this._end = true;
+
         return { "key": this._keys[0], "val": this[this._keys[0]].val };
     } else {
         var cache = { "key": this._pointer, "val": this[this._pointer].val };
