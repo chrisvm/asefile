@@ -69,7 +69,7 @@ ByteDef.prototype.parse = function (def, filePath, cb) {
 
 ByteDef.prototype._recv_parse = function (def_name, orig, stream, obj) {
     // start parsing loop
-    var chunk, part, t = {}, definition;
+    var chunk, currentPart, t = {}, definition;
 
     // wrap definition in sequential list
     definition = ByteDef.seq_wrapper(orig, def_name);
@@ -77,11 +77,11 @@ ByteDef.prototype._recv_parse = function (def_name, orig, stream, obj) {
 
     // start parsing loop
     while (definition.valid) {
-        // get next part to parse
-        part = definition.next();
+        // get next currentPart to parse
+        currentPart = definition.next();
 
         // if null, finished parsing
-        if (part == null) {
+        if (currentPart == null) {
             // call callback with parsed results
             definition.valid = false;
             obj[def_name] = t;
@@ -90,8 +90,8 @@ ByteDef.prototype._recv_parse = function (def_name, orig, stream, obj) {
 
         // TODO: unit test for just-in-time parsing
         // if null placeholder, look for after entry in the mods.after object
-        if (part.is == 'null') {
-            var part_name = [part.def_name, part.key].join('.');
+        if (currentPart.is == 'null') {
+            var part_name = [currentPart.def_name, currentPart.key].join('.');
             if (_.has(this.mods.after, part_name))  {
                 // TODO: do initing, checking all data necessary is already parsed
                 // get mod
@@ -107,8 +107,8 @@ ByteDef.prototype._recv_parse = function (def_name, orig, stream, obj) {
                     return 'MissingJITParsingModError';
                 }
 
-                // set part to correct type
-                part = new (Function.prototype.bind.apply(after_mod.constructor, args));
+                // set currentPart to correct type
+                currentPart = new (Function.prototype.bind.apply(after_mod.constructor, args));
             } else {
                 // raise error
                 definition.valid = false;
@@ -116,34 +116,71 @@ ByteDef.prototype._recv_parse = function (def_name, orig, stream, obj) {
             }
         }
 
-        // if part is string, look in definitions
-        if (typeof(part.val) == 'string') {
+        // if currentPart is string, look in definitions
+        var rmod = this.mods.repeat[def_name];
+        if (typeof(currentPart.val) == 'string') {
             // if not found, give error
-            if (!this.has_def(part.val)) {
+            if (!this.has_def(currentPart.val)) {
                 definition.valid = false;
                 return 'DefinitionNotFoundError';
             }
 
-            var t_orig = this.get_def(part.val), t_obj = {}, t_err;
-            t_err = this._recv_parse(part.val, t_orig, stream, t_obj);
-            // error was found
-            if (t_err != null) {
-                definition.valid = false;
-                return t_err;
+            // get referenced definition
+            var t_orig = this.get_def(currentPart.val), t_obj = {}, t_err;
+
+            // check if repeat mod present for current self-referenced property
+            if (rmod && rmod[currentPart.key]) {
+                // TODO: insert repeat code for a self reference in here
+
             } else {
-                t[part.key] = t_obj[part.key];
+                // parse normally (without repeat)
+                t_err = this._recv_parse(currentPart.val, t_orig, stream, t_obj);
+                // error was found
+                if (t_err != null) {
+                    definition.valid = false;
+                    return t_err;
+                } else {
+                    t[currentPart.key] = t_obj[currentPart.key];
+                }
             }
         } else {
-            // get chunk for part
-            chunk = stream.read(part.val.bsize);
-            // if chunk size != part.bsize, data not enough for definition
-            if (chunk.length < part.val.bsize) {
-                definition.valid = false;
-                return 'NotEnoughDataError';
-            }
+            // TODO: check if a repeat mod
+            if (rmod && rmod[currentPart.key]) {
+                // set array
+                var arr = t[currentPart.key] = [];
 
-            // read part into ret object
-            t[part.key] = orig[part.key].read(chunk);
+                // get repeat number
+                var repTimes = rmod[currentPart.key];
+                if (typeof(repTimes) == 'string') {
+                    // repTimes is name of prop, get it
+                    repTimes = t[repTimes];
+                    if (repTimes == null) throw 'RepeatPropNotFoundError';
+                }
+
+                // repeat the parsing
+                for (var index = 0; index < repTimes; index += 1) {
+                    // get chunk for currentPart
+                    chunk = stream.read(currentPart.val.bsize);
+                    // if chunk size != currentPart.bsize, data not enough for definition
+                    if (chunk.length < currentPart.val.bsize) {
+                        definition.valid = false;
+                        return 'NotEnoughDataError';
+                    }
+                    arr.push(orig[currentPart.key].read(chunk));
+                }
+
+            } else {
+                // get chunk for currentPart
+                chunk = stream.read(currentPart.val.bsize);
+                // if chunk size != currentPart.bsize, data not enough for definition
+                if (chunk.length < currentPart.val.bsize) {
+                    definition.valid = false;
+                    return 'NotEnoughDataError';
+                }
+
+                // read currentPart into ret object
+                t[currentPart.key] = orig[currentPart.key].read(chunk);
+            }
         }
     }
 };
@@ -190,10 +227,23 @@ ByteDef.prototype.after = function (def_name, constructor, args) {
  * @param {string|Number} repeat - times to repeat the definition
  */
 ByteDef.prototype.repeat = function (def_name, repeat) {
-    this.mods.repeat[def_name] = {
-        "def_name": def_name,
-        "repeat": repeat
-    };
+    // get name of definition
+    var def = def_name.split('.')[0];
+    // throw error if defitnition not found
+    if (!this.has_def(def)) throw 'DefinitionNotFoundError';
+
+    // get properties names
+    var prop_name = def_name.split('.').slice(1).join('.');
+
+    // if name of repeat field, extract propname
+    if (typeof(repeat) == 'string') {
+        if (repeat.split('.')[0] != def) throw 'WrongRepeatPropertyError';
+        repeat = repeat.split('.').slice(1).join('.');
+    }
+    // create entry in repeat mods
+    if (this.mods.repeat[def] == null)
+        this.mods.repeat[def] = {};
+    this.mods.repeat[def][prop_name] = repeat;
 };
 
 /**

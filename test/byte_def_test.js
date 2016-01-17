@@ -134,6 +134,7 @@ describe("ByteDef", function () {
                 test_def.parse('test', test_file, function (err, parsed) {
                     if (err) throw err;
                     parsed.should.deepEqual(test_obj);
+                    done();
                 });
             });
         });
