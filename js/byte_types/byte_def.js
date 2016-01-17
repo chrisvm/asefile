@@ -24,7 +24,7 @@ ByteDef.prototype.define = function (name, def) {
     this.defs[name] = _.mapValues(def, function (val) {
         if (val == null) {
             // if null, set to null placeholder
-            val = {"is": null};
+            val = { "is": 'null' };
         }
         return val;
     }, this);
@@ -66,7 +66,7 @@ ByteDef.prototype.parse = function (def, filePath, cb) {
 
 ByteDef.prototype._recv_parse = function (def_name, orig, stream, obj) {
     // start parsing loop
-    var chunk, currentPart, t = {}, definition;
+    var chunk, currentPart, t = {}, definition, jit = false;
 
     // wrap definition in sequential list
     definition = ByteDef.seq_wrapper(orig, def_name);
@@ -87,15 +87,12 @@ ByteDef.prototype._recv_parse = function (def_name, orig, stream, obj) {
 
         // TODO: unit test for just-in-time parsing
         // if null placeholder, look for after entry in the mods.after object
-        if (currentPart.is == 'null') {
-            var part_name = [currentPart.def_name, currentPart.key].join('.');
-            if (_.has(this.mods.after, part_name))  {
-                // TODO: do initing, checking all data necessary is already parsed
-                // get mod
-                var after_mod = this.mods.after[part_name];
-
+        if (currentPart.val.is == 'null') {
+            var amod = this.mods.after[def_name];
+            if (amod && amod[currentPart.key])  {
+                amod = amod[currentPart.key];
                 // prepare arguments
-                var args = _.map(after_mod.args, function (v) { return _.get(obj, v); });
+                var args = _.map(amod.args, function (v) { return _.get(this, v); }, t);
 
                 // if any argument is null, error
                 if (_.some(args, function (a) { return a == null; })) {
@@ -105,7 +102,8 @@ ByteDef.prototype._recv_parse = function (def_name, orig, stream, obj) {
                 }
 
                 // set currentPart to correct type
-                currentPart = new (Function.prototype.bind.apply(after_mod.constructor, args));
+                currentPart.val = new (Function.prototype.bind.apply(amod.type, args));
+                jit = true;
             } else {
                 // raise error
                 definition.valid = false;
@@ -127,7 +125,6 @@ ByteDef.prototype._recv_parse = function (def_name, orig, stream, obj) {
 
             // check if repeat mod present for current self-referenced property
             if (rmod && rmod[currentPart.key]) {
-                // TODO: insert repeat code for a self reference in here
                 // set array
                 var arr = t[currentPart.key] = [];
 
@@ -164,7 +161,9 @@ ByteDef.prototype._recv_parse = function (def_name, orig, stream, obj) {
                 }
             }
         } else {
-            // TODO: check if a repeat mod
+            if (!jit)
+                currentPart.val = orig[currentPart.key];
+
             if (rmod && rmod[currentPart.key]) {
                 // set array
                 var arr = t[currentPart.key] = [];
@@ -186,7 +185,7 @@ ByteDef.prototype._recv_parse = function (def_name, orig, stream, obj) {
                         definition.valid = false;
                         return 'NotEnoughDataError';
                     }
-                    arr.push(orig[currentPart.key].read(chunk));
+                    arr.push(currentPart.val.read(chunk));
                 }
 
             } else {
@@ -199,7 +198,7 @@ ByteDef.prototype._recv_parse = function (def_name, orig, stream, obj) {
                 }
 
                 // read currentPart into ret object
-                t[currentPart.key] = orig[currentPart.key].read(chunk);
+                t[currentPart.key] = currentPart.val.read(chunk);
             }
         }
     }
@@ -233,9 +232,22 @@ ByteDef.prototype.get_def = function (def) {
  * @param {string[]|int[]} args - the list of arguments to give to constructor
  */
 ByteDef.prototype.after = function (def_name, constructor, args) {
-    this.mods.after[def_name] = {
-        "def_name": def_name,
-        "constructor": constructor,
+    // get name of definition
+    var def = def_name.split('.')[0];
+    //// throw error if definition not found
+    //if (!this.has_def(def)) throw 'DefinitionNotFoundError';
+
+    // get properties names
+    var prop_name = def_name.split('.').slice(1).join('.');
+    args = _.map(args, function (v) {
+        return v.split('.').slice(1).join('.');
+    });
+
+    // create after entry
+    if (this.mods.after[def] == null)
+        this.mods.after[def] = {};
+    this.mods.after[def][prop_name] = {
+        "type": constructor,
         "args": args
     };
 };
@@ -249,8 +261,8 @@ ByteDef.prototype.after = function (def_name, constructor, args) {
 ByteDef.prototype.repeat = function (def_name, repeat) {
     // get name of definition
     var def = def_name.split('.')[0];
-    // throw error if defitnition not found
-    if (!this.has_def(def)) throw 'DefinitionNotFoundError';
+    //// throw error if definition not found
+    //if (!this.has_def(def)) throw 'DefinitionNotFoundError';
 
     // get properties names
     var prop_name = def_name.split('.').slice(1).join('.');
