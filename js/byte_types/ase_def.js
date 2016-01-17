@@ -4,6 +4,12 @@ var ByteDef = require('./byte_def'),
 
 // define ase file
 var ase_def = new ByteDef();
+
+ase_def.define('ase_file', {
+    "header": "header",
+    "frames": "frame"
+});
+
 ase_def.define('header', {
     "file_size": new types.DWord(),
     "magic_num": new types.Word(),
@@ -40,12 +46,7 @@ ase_def.define('frame_chunk', {
     "chunk_data": null
 });
 
-ase_def.define('ase_file', {
-    "header": "header",
-    "frames": "frame"
-});
 
-// TODO: implement/test new after/repeat api
 ase_def.after('frame_chunk.chunk_data', types.Bytes, ['frame_chunk.chunk_size']);
 ase_def.repeat('ase_file.frames', 'ase_file.header.frames');
 module.exports = ase_def;
